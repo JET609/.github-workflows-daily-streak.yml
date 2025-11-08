@@ -1,0 +1,44 @@
+name: 🔥 Daily Streak Engine
+
+on:
+  schedule:
+    # Runs every day at 18:00 IST (12:30 UTC)
+    - cron: "30 12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  update-streak:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run Streak Updater
+        run: |
+          python .github/scripts/update_streak.py
+
+      - name: Commit & Push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add STREAK.md streak_data.json
+            git commit -m "chore: 🔥 auto-update streak [skip ci]" || echo "No commit created"
+            git push
+          else
+            echo "No changes to commit."
+          fi
