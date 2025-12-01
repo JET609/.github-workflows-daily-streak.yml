@@ -1,44 +1,46 @@
-name: 🔥 Daily Streak Engine
+name: Daily Streak Keeper
 
 on:
   schedule:
-    # Runs every day at 18:00 IST (12:30 UTC)
-    - cron: "30 12 * * *"
-  workflow_dispatch: {}
+    # Runs every day at 00:00 UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch: # lets you run it manually from the Actions tab
 
 jobs:
-  update-streak:
+  keep-streak:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Run Streak Updater
-        run: |
-          python .github/scripts/update_streak.py
-
-      - name: Commit & Push changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if [ -n "$(git status --porcelain)" ]; then
-            git add STREAK.md streak_data.json
-            git commit -m "chore: 🔥 auto-update streak [skip ci]" || echo "No commit created"
-            git push
+      - name: Update streak file
+        run: |
+          FILE="streak-log.txt"
+          DATE="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Daily run at $DATE" >> "$FILE"
+          echo "Updated $FILE with today's run."
+
+      - name: Commit changes
+        run: |
+          if git status --porcelain | grep .; then
+            git add streak-log.txt
+            git commit -m "chore: daily streak update [skip ci]" || echo "Nothing to commit."
           else
             echo "No changes to commit."
           fi
+
+      - name: Push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          git push origin "HEAD:${BRANCH}"
